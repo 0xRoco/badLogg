@@ -1,8 +1,10 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace badLogg;
 
+//TODO: Make this disposable?
 public class LogManager
 {
     private readonly bool _isInitialized;
@@ -12,6 +14,9 @@ public class LogManager
     private readonly LogConfig _config;
     private readonly ILogger _fileLogger;
     private readonly ILogger _consoleLogger;
+    
+    private readonly ManualResetEvent _hasNewLogs = new(false);
+    private readonly Queue<Action> _logQueue = new();
     public LogManager(LogConfig config)
     {
         _instance = this;
@@ -19,6 +24,8 @@ public class LogManager
         _fileLogger = new FileLogger(_config);
         _consoleLogger = new ConsoleLogger(_config);
         _isInitialized = true;
+
+        ProcessQueue();
     }
 
     public static LogManager GetLogger()
@@ -37,12 +44,12 @@ public class LogManager
         if (!_isInitialized) throw new Exception("LogManager is not initialized");
         if (_config.IsFileLoggingEnabled)
         {
-            _fileLogger.Info(message, callerName, callerPath);        
+            AddToQueue(() => _fileLogger.Info(message, callerName, callerPath));      
         }
         
         if (_config.IsConsoleLoggingEnabled)
         {
-            _consoleLogger.Info(message, callerName, callerPath);
+            AddToQueue(() => _consoleLogger.Info(message, callerName, callerPath));
         }
         
     }
@@ -53,12 +60,12 @@ public class LogManager
         
         if (_config.IsFileLoggingEnabled)
         {
-            _fileLogger.Error(message, callerName, callerPath);
+            AddToQueue(() => _fileLogger.Error(message, callerName, callerPath));      
 
         } 
         if (_config.IsConsoleLoggingEnabled)
         {
-            _consoleLogger.Error(message, callerName, callerPath);
+            AddToQueue(() => _consoleLogger.Error(message, callerName, callerPath));
         }
 
     }
@@ -66,16 +73,14 @@ public class LogManager
     public void Warn(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
         if (!_isInitialized) throw new Exception("LogManager is not initialized");
-
-        
         if (_config.IsFileLoggingEnabled)
         {
-            _fileLogger.Warn(message, callerName, callerPath);
+            AddToQueue(() => _fileLogger.Warn(message, callerName, callerPath));      
         }
         
         if (_config.IsConsoleLoggingEnabled)
         { 
-            _consoleLogger.Warn(message, callerName, callerPath);
+            AddToQueue(() => _consoleLogger.Warn(message, callerName, callerPath));
         }
 
     }
@@ -83,18 +88,52 @@ public class LogManager
     public void Debug(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
         if (!_isInitialized) throw new Exception("LogManager is not initialized");
-
-        
         if (_config.IsFileLoggingEnabled)
         {
-            _fileLogger.Debug(message, callerName, callerPath);
+            AddToQueue(() => _fileLogger.Debug(message, callerName, callerPath));
         }
         if (_config.IsConsoleLoggingEnabled)
         {
-            _consoleLogger.Debug(message, callerName, callerPath);
+            AddToQueue(() => _consoleLogger.Debug(message, callerName, callerPath));
         }
 
     }
+    
+    private void AddToQueue(Action action)
+    {
+        lock (_logQueue)
+        {
+            _logQueue.Enqueue(action);
+        }
+        _hasNewLogs.Set();
+    }
+    
+    //TODO: flush logs from queue on demand
+    //BUG: Logs are not printed in order in console
+    private void ProcessQueue()
+    {
+        Task.Run(() =>
+        {
+            while (true)
+            {
+                _hasNewLogs.WaitOne();
+                _hasNewLogs.Reset();
+
+                Queue<Action> queueCopy;
+                lock (_logQueue)
+                {
+                    queueCopy = new Queue<Action>(_logQueue);
+                    _logQueue.Clear();
+                }
+
+                foreach (var log in queueCopy)
+                {
+                    log();
+                }
+            }
+        });
+    }
+    
     
     [DllImport("kernel32.dll")]
     private static extern void AllocConsole();
