@@ -7,7 +7,7 @@ namespace badLogg;
 public class LogManager
 {
     private bool IsInitialized { get; set; }
-    private bool IsConsoleCreated { get; set; }
+    public bool IsConsoleCreated { get; private set; }
     
     private static LogManager? _instance;
     private LogConfig Config { get;  }
@@ -150,6 +150,7 @@ public class LogManager
 
             AllocConsole();
             IsConsoleCreated = true;
+            Info("Console created");
         }
         catch (Exception e)
         {
@@ -169,6 +170,7 @@ public class LogManager
 
             FreeConsole();
             IsConsoleCreated = false;
+            Info("Console destroyed");
         }
         catch (Exception e)
         {
