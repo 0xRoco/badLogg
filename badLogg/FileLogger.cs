@@ -7,12 +7,12 @@ internal class FileLogger : ILogger
 
 
     private readonly  ReaderWriterLockSlim _lock = new();
-    private readonly LogManager _logger;
-    private readonly LogConfig _config;
+    private LogManager Logger { get; }
+    private LogConfig Config { get;}
     public FileLogger(LogConfig config)
     {
-        _config = config;
-        _logger = LogManager.GetLogger();
+        Config = config;
+        Logger = LogManager.GetLogger();
     }
 
     public void Info(string message, string callerName = "", string callerPath = "")
@@ -53,17 +53,17 @@ internal class FileLogger : ILogger
         {
             lock (_lock)
             {
-                if (!Directory.Exists(_config.LogDirectory)) Directory.CreateDirectory(_config.LogDirectory);
+                if (!Directory.Exists(Config.LogDirectory)) Directory.CreateDirectory(Config.LogDirectory);
                 if (string.IsNullOrEmpty(CurrentLogFileName))
                 {
-                    var files = Directory.GetFiles(_config.LogDirectory);
-                    if (files.Length >= _config.MaxLogs)
+                    var files = Directory.GetFiles(Config.LogDirectory);
+                    if (files.Length >= Config.MaxLogs)
                         foreach (var s in files)
                             File.Delete(s);
-                    CurrentLogFileName = $"{DateTime.Now:yyyy-MM-ddTHH-mm-ss}_{_config.AppName}.txt";
+                    CurrentLogFileName = $"{DateTime.Now:yyyy-MM-ddTHH-mm-ss}_{Config.AppName}.txt";
                 }
 
-                File.AppendAllText($@"{_config.LogDirectory}\{CurrentLogFileName}", $"{message}\n");
+                File.AppendAllText($@"{Config.LogDirectory}\{CurrentLogFileName}", $"{message}\n");
             }
         }
         finally

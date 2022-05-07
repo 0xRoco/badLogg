@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace badLogg;
@@ -7,23 +6,24 @@ namespace badLogg;
 //TODO: Make this disposable?
 public class LogManager
 {
-    private readonly bool _isInitialized;
-    private bool _isConsoleCreated;
+    private bool IsInitialized { get; set; }
+    private bool IsConsoleCreated { get; set; }
     
     private static LogManager? _instance;
-    private readonly LogConfig _config;
-    private readonly ILogger _fileLogger;
-    private readonly ILogger _consoleLogger;
+    private LogConfig Config { get;  }
+    private ILogger FileLogger { get; }
+    private ILogger ConsoleLogger { get; }
     
     private readonly ManualResetEvent _hasNewLogs = new(false);
     private readonly Queue<Action> _logQueue = new();
+
     public LogManager(LogConfig config)
     {
         _instance = this;
-        _config = config;
-        _fileLogger = new FileLogger(_config);
-        _consoleLogger = new ConsoleLogger(_config);
-        _isInitialized = true;
+        Config = config;
+        FileLogger = new FileLogger(Config);
+        ConsoleLogger = new ConsoleLogger(Config);
+        IsInitialized = true;
 
         ProcessQueue();
     }
@@ -41,64 +41,64 @@ public class LogManager
     
     public void Info(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
-        if (!_isInitialized) throw new Exception("LogManager is not initialized");
-        if (_config.IsFileLoggingEnabled)
+        if (!IsInitialized) throw new Exception("LogManager is not initialized");
+        if (Config.IsFileLoggingEnabled)
         {
-            AddToQueue(() => _fileLogger.Info(message, callerName, callerPath));      
+            AddToQueue(() => FileLogger.Info(message, callerName, callerPath));      
         }
         
-        if (_config.IsConsoleLoggingEnabled)
+        if (Config.IsConsoleLoggingEnabled)
         {
-            AddToQueue(() => _consoleLogger.Info(message, callerName, callerPath));
+            AddToQueue(() => ConsoleLogger.Info(message, callerName, callerPath));
         }
         
     }
     
     public void Error(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
-        if (!_isInitialized) throw new Exception("LogManager is not initialized");
+        if (!IsInitialized) throw new Exception("LogManager is not initialized");
         
-        if (_config.IsFileLoggingEnabled)
+        if (Config.IsFileLoggingEnabled)
         {
-            AddToQueue(() => _fileLogger.Error(message, callerName, callerPath));      
+            AddToQueue(() => FileLogger.Error(message, callerName, callerPath));      
 
         } 
-        if (_config.IsConsoleLoggingEnabled)
+        if (Config.IsConsoleLoggingEnabled)
         {
-            AddToQueue(() => _consoleLogger.Error(message, callerName, callerPath));
+            AddToQueue(() => ConsoleLogger.Error(message, callerName, callerPath));
         }
 
     }
     
     public void Warn(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
-        if (!_isInitialized) throw new Exception("LogManager is not initialized");
-        if (_config.IsFileLoggingEnabled)
+        if (!IsInitialized) throw new Exception("LogManager is not initialized");
+        if (Config.IsFileLoggingEnabled)
         {
-            AddToQueue(() => _fileLogger.Warn(message, callerName, callerPath));      
+            AddToQueue(() => FileLogger.Warn(message, callerName, callerPath));      
         }
         
-        if (_config.IsConsoleLoggingEnabled)
+        if (Config.IsConsoleLoggingEnabled)
         { 
-            AddToQueue(() => _consoleLogger.Warn(message, callerName, callerPath));
+            AddToQueue(() => ConsoleLogger.Warn(message, callerName, callerPath));
         }
 
     }
     
     public void Debug(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
-        if (!_isInitialized) throw new Exception("LogManager is not initialized");
-        if (_config.IsFileLoggingEnabled)
+        if (!IsInitialized) throw new Exception("LogManager is not initialized");
+        if (Config.IsFileLoggingEnabled)
         {
-            AddToQueue(() => _fileLogger.Debug(message, callerName, callerPath));
+            AddToQueue(() => FileLogger.Debug(message, callerName, callerPath));
         }
-        if (_config.IsConsoleLoggingEnabled)
+        if (Config.IsConsoleLoggingEnabled)
         {
-            AddToQueue(() => _consoleLogger.Debug(message, callerName, callerPath));
+            AddToQueue(() => ConsoleLogger.Debug(message, callerName, callerPath));
         }
 
     }
-    
+
     private void AddToQueue(Action action)
     {
         lock (_logQueue)
@@ -107,14 +107,13 @@ public class LogManager
         }
         _hasNewLogs.Set();
     }
-    
+
     //TODO: flush logs from queue on demand
-    //BUG: Logs are not printed in order in console
     private void ProcessQueue()
     {
         Task.Run(() =>
         {
-            while (true)
+            while (IsInitialized)
             {
                 _hasNewLogs.WaitOne();
                 _hasNewLogs.Reset();
@@ -134,7 +133,6 @@ public class LogManager
         });
     }
     
-    
     [DllImport("kernel32.dll")]
     private static extern void AllocConsole();
     [DllImport("kernel32.dll")]
@@ -142,23 +140,39 @@ public class LogManager
 
     public void CreateConsole()
     {
-        if (!_config.IsConsoleLoggingEnabled || _isConsoleCreated || !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        try
         {
-            return;
+            if (!Config.IsConsoleLoggingEnabled || IsConsoleCreated ||
+                !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            AllocConsole();
+            IsConsoleCreated = true;
         }
-        
-        AllocConsole();
-        _isConsoleCreated = true;
+        catch (Exception e)
+        {
+            Error($"Failed to create console: {e.GetBaseException()}");
+        }
     }
     
     public void DestroyConsole()
     {
-        if (!_config.IsConsoleLoggingEnabled || !_isConsoleCreated || !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        try
         {
-            return;
+            if (!Config.IsConsoleLoggingEnabled || !IsConsoleCreated ||
+                !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                return;
+            }
+
+            FreeConsole();
+            IsConsoleCreated = false;
         }
-        
-        FreeConsole();
-        _isConsoleCreated = false;
+        catch (Exception e)
+        {
+            Error($"Failed to destroy console: {e.GetBaseException()}");
+        }
     }
 }

@@ -1,9 +1,12 @@
 ﻿# badLogg
-badLagg is a simple logging library for .NET 6 applications. its kinda easy to setup and use. 
+badLogg is a simple logging library for .NET 6 applications. its kinda easy to setup and use. 
 
 And as the name says, its not that advanced but i wanted to reinvent the wheel and see how it goes.
 
-its missing a lot of features most importantly asynchronous logging but it should be easy to implement later (_**Surely**_).
+### Features
+* Asynchronous logging (i think?)
+* Console and file logging
+
 ## Setting up and getting started
 ```c#
 _logger = new LogManager(new LogConfig("badLogg", //App name
