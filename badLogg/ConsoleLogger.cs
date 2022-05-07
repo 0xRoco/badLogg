@@ -2,35 +2,35 @@
 
 internal class ConsoleLogger : ILogger
 {
+    private LogConfig Config { get;}
 
-    private readonly LogConfig _config;
     public ConsoleLogger(LogConfig config)
     {
-        _config = config;
+        Config = config;
     }
 
-    public  void Info(string message, string callerName = "", string callerPath = "")
+    public void Info(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Info, message, callerName, callerPath);
-         Task.Run(() => PrintToConsole(LogLevel.Info, formattedMessage));
+        PrintToConsole(LogLevel.Info, formattedMessage);
     }
 
-    public  void Warn(string message, string callerName = "", string callerPath = "")
+    public void Warn(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Warn, message, callerName, callerPath);
-         Task.Run(() => PrintToConsole(LogLevel.Warn, formattedMessage));
+        PrintToConsole(LogLevel.Warn, formattedMessage);
     }
 
     public  void Error(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Error, message, callerName, callerPath);
-         Task.Run(() => PrintToConsole(LogLevel.Error, formattedMessage));
+        PrintToConsole(LogLevel.Error, formattedMessage);
     }
 
     public  void Debug(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Debug, message, callerName, callerPath);
-         Task.Run(() => PrintToConsole(LogLevel.Debug, formattedMessage));
+        PrintToConsole(LogLevel.Debug, formattedMessage);
     }
 
     private static string FormatMessage(LogLevel logLevel, string message, string callerName = "", string callerPath = "")

@@ -6,13 +6,13 @@ internal class FileLogger : ILogger
     private string? CurrentLogFileName { get; set; }
 
 
-    private readonly  ReaderWriterLockSlim _lock = new();
-    private readonly LogManager _logger;
-    private readonly LogConfig _config;
+    private static ReaderWriterLock Lock { get; } = new();
+    private LogManager Logger { get; }
+    private LogConfig Config { get;}
     public FileLogger(LogConfig config)
     {
-        _config = config;
-        _logger = LogManager.GetLogger();
+        Config = config;
+        Logger = LogManager.GetLogger();
     }
 
     public void Info(string message, string callerName = "", string callerPath = "")
@@ -21,7 +21,7 @@ internal class FileLogger : ILogger
         WriteToFile(formattedMessage);
     }
 
-    public  void Warn(string message, string callerName = "", string callerPath = "")
+    public void Warn(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Warn, message, callerName, callerPath);
         WriteToFile(formattedMessage);
@@ -45,30 +45,27 @@ internal class FileLogger : ILogger
     {
         return $"{DateTime.Now:s}| {logLevel}|{LogHelper.GetClassName(callerPath)}.{callerName}: {message}";
     }
-    
+
     private void WriteToFile(string message)
     {
-        _lock.EnterWriteLock();
         try
         {
-            lock (_lock)
+            Lock.AcquireWriterLock(Timeout.Infinite);
+            if (!Directory.Exists(Config.LogDirectory)) Directory.CreateDirectory(Config.LogDirectory);
+            if (string.IsNullOrEmpty(CurrentLogFileName))
             {
-                if (!Directory.Exists(_config.LogDirectory)) Directory.CreateDirectory(_config.LogDirectory);
-                if (string.IsNullOrEmpty(CurrentLogFileName))
-                {
-                    var files = Directory.GetFiles(_config.LogDirectory);
-                    if (files.Length >= _config.MaxLogs)
-                        foreach (var s in files)
-                            File.Delete(s);
-                    CurrentLogFileName = $"{DateTime.Now:yyyy-MM-ddTHH-mm-ss}_{_config.AppName}.txt";
-                }
-
-                File.AppendAllText($@"{_config.LogDirectory}\{CurrentLogFileName}", $"{message}\n");
+                var files = Directory.GetFiles(Config.LogDirectory);
+                if (files.Length >= Config.MaxLogs)
+                    foreach (var s in files)
+                        File.Delete(s);
+                CurrentLogFileName = $"{DateTime.Now:yyyy-MM-ddTHH-mm-ss}_{Config.AppName}.txt";
             }
+
+            File.AppendAllText(Path.Combine(Config.LogDirectory, CurrentLogFileName), $"{message}\n");
         }
         finally
         {
-            _lock.ExitWriteLock();
+            Lock.ReleaseWriterLock();
         }
     }
 }

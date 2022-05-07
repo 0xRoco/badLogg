@@ -10,23 +10,20 @@ namespace tests;
 // ReSharper disable once InconsistentNaming
 public class badLaggTests
 {
-    private LogManager _logger = null!;
-    
-    [SetUp]
-    public void Setup()
+    private readonly LogManager _logger;
+
+    public badLaggTests()
     {
         _logger = new LogManager(new LogConfig("badLogg",
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\badLogg\\UnitTest\\Logs",
             5,
             true,
             true));
-        
-        var logger = LogManager.GetLogger();
     }
-    
+
     [Test]
     [Order(0)]
-    public void IsLoggerCreated()
+    public void CanCreateLogger()
     {
         Assert.IsNotNull(_logger);
     }
@@ -35,100 +32,48 @@ public class badLaggTests
     [Order(1)]
     public void CanCreateConsole()
     {
-        Assert.IsNotNull(_logger);
         _logger.CreateConsole();
-         _logger.Info("Created console");
+        Assert.IsTrue(_logger.IsConsoleCreated);
     }
-    
+
     [Test]
     [Order(2)]
-    public void CanLogInfo()
+    public void CanInfoLog()
     {
-        Assert.IsNotNull(_logger);
-        _logger.Info("CanLogInfo");
+        _logger.Info($"This is a info log");
     }
-    
+
     [Test]
     [Order(3)]
-    public void CanLogError()
+    public void CanWarningLog()
     {
-        Assert.IsNotNull(_logger);
-        _logger.Error("CanLogError");
+        _logger.Warn($"This is a warning log");
     }
-    
+
     [Test]
     [Order(4)]
-    public void CanLogWarning()
+    public void CanErrorLog()
     {
-        Assert.IsNotNull(_logger);
-        _logger.Warn("CanLogWarning");
+        _logger.Error($"This is a error log");
     }
-    
+
     [Test]
     [Order(5)]
-    public void CanLogDebug()
+    public void CanDebugLog()
     {
-        Assert.IsNotNull(_logger);
-        _logger.Debug("CanLogDebug");
+        _logger.Debug($"This is a debug log");
     }
     
     [Test]
     [Order(6)]
-    public void CanSpamLog()
-    {
-        Assert.IsNotNull(_logger);
-        for (var i = 0; i < 100; i++)
-        {
-            _logger.Info($"CanSpamLog {i+1}");
-        }
-    }
-    
-    //This test requires manual review of the log file
-    [Test]
-    [Order(7)]
-    public void CanLogFromMultipleTasks()
-    {
-        Assert.IsNotNull(_logger);
-        
-        Task.Run(() =>
-        {
-            for (var i = 0; i < 100; i++)
-            {
-                _logger.Info($"CanLogFromMultipleTasks #1 {i+1}");
-            }        
-        }).Wait();
-        
-         Task.Run(() =>
-        {
-            for (var i = 0; i < 100; i++)
-            {
-                _logger.Info($"CanLogFromMultipleTasks #2 {i+1}");
-
-            }        
-        }).Wait();
-    }
-    
-    
-    //This test requires manual review of the log file
-    [Test]
-    [Order(8)]
     public void CanLogParallel()
     {
-        Assert.IsNotNull(_logger);
-        Parallel.Invoke(() =>
+        Parallel.For(0, 10, i =>
         {
-            for (var i = 0; i < 10; i++)
-            {
-                _logger.Info($"CanLogParallel #1 {i+1}");
-
-            }
-        }, () => 
-        {
-            for (var i = 0; i < 10; i++)
-            {
-                _logger.Info($"CanLogParallel #2 {i+1}");
-
-            }
+            _logger.Info($"This is a info log {i}");
+            _logger.Warn($"This is a warning log {i}");
+            _logger.Error($"This is a error log {i}");
+            _logger.Debug($"This is a debug log {i}");
         });
     }
 
@@ -136,9 +81,7 @@ public class badLaggTests
     [Order(99)]
     public void CanDestroyConsole()
     {
-        Assert.IsNotNull(_logger);
         _logger.DestroyConsole();
-        _logger.Info("Destroyed console");
+        Assert.IsFalse(_logger.IsConsoleCreated);
     }
-    
 }
