@@ -15,29 +15,29 @@ internal class FileLogger : ILogger
         Logger = LogManager.GetLogger();
     }
 
-    public void Info(string message, string callerName = "", string callerPath = "")
+    public async void Info(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Info, message, callerName, callerPath);
-        WriteToFile(formattedMessage);
+        await WriteToFile(formattedMessage);
     }
 
-    public void Warn(string message, string callerName = "", string callerPath = "")
+    public async void Warn(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Warn, message, callerName, callerPath);
-        WriteToFile(formattedMessage);
+        await WriteToFile(formattedMessage);
     }
     
 
-    public  void Error(string message, string callerName = "", string callerPath = "")
+    public async void Error(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Error, message, callerName, callerPath);
-        WriteToFile(formattedMessage);
+        await WriteToFile(formattedMessage);
     }
 
-    public  void Debug(string message, string callerName = "", string callerPath = "")
+    public async void Debug(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Debug, message, callerName, callerPath);
-        WriteToFile(formattedMessage);
+        await WriteToFile(formattedMessage);
     }
     
     
@@ -46,7 +46,7 @@ internal class FileLogger : ILogger
         return $"{DateTime.Now:s}| {logLevel}|{LogHelper.GetClassName(callerPath)}.{callerName}: {message}";
     }
 
-    private void WriteToFile(string message)
+    private async Task WriteToFile(string message)
     {
         try
         {
@@ -61,7 +61,10 @@ internal class FileLogger : ILogger
                 CurrentLogFileName = $"{DateTime.Now:yyyy-MM-ddTHH-mm-ss}_{Config.AppName}.txt";
             }
 
-            File.AppendAllText(Path.Combine(Config.LogDirectory, CurrentLogFileName), $"{message}\n");
+            var filePath = Path.Combine(Config.LogDirectory, CurrentLogFileName);
+            await using var file = new StreamWriter(filePath, true);
+            await file.WriteLineAsync(message);
+            file.Close();
         }
         finally
         {
