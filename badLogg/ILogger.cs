@@ -3,8 +3,8 @@ namespace badLogg;
 
 internal interface ILogger
 {
-    void Info(string message, string callerName = "", string callerPath = "");
-    void Warn(string message, string callerName = "", string callerPath = "");
-    void Error(string message,  string callerName = "", string callerPath = "");
-    void Debug(string message,  string callerName = "", string callerPath = "");
+    Task Info(string message, string callerName = "", string callerPath = "");
+    Task Warn(string message, string callerName = "", string callerPath = "");
+    Task Error(string message,  string callerName = "", string callerPath = "");
+    Task Debug(string message,  string callerName = "", string callerPath = "");
 }

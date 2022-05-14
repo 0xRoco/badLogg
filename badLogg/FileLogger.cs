@@ -3,9 +3,7 @@
 internal class FileLogger : ILogger
 {
 
-    private string? CurrentLogFileName { get; set; }
-
-
+    private string CurrentLogFileName { get; set; } = "";
     private static ReaderWriterLock Lock { get; } = new();
     private LogManager Logger { get; }
     private LogConfig Config { get;}
@@ -15,26 +13,26 @@ internal class FileLogger : ILogger
         Logger = LogManager.GetLogger();
     }
 
-    public async void Info(string message, string callerName = "", string callerPath = "")
+    public async Task Info(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Info, message, callerName, callerPath);
         await WriteToFile(formattedMessage);
     }
 
-    public async void Warn(string message, string callerName = "", string callerPath = "")
+    public async Task Warn(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Warn, message, callerName, callerPath);
         await WriteToFile(formattedMessage);
     }
     
 
-    public async void Error(string message, string callerName = "", string callerPath = "")
+    public async Task Error(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Error, message, callerName, callerPath);
         await WriteToFile(formattedMessage);
     }
 
-    public async void Debug(string message, string callerName = "", string callerPath = "")
+    public async Task Debug(string message, string callerName = "", string callerPath = "")
     {
         var formattedMessage = FormatMessage(LogLevel.Debug, message, callerName, callerPath);
         await WriteToFile(formattedMessage);
@@ -43,7 +41,7 @@ internal class FileLogger : ILogger
     
     private static string FormatMessage(LogLevel logLevel, string message, string callerName, string callerPath)
     {
-        return $"{DateTime.Now:s}| {logLevel}|{LogHelper.GetClassName(callerPath)}.{callerName}: {message}";
+        return $"{DateTime.Now:s}| {logLevel}| {LogHelper.GetClassName(callerPath)}.{callerName}: {message}";
     }
 
     private async Task WriteToFile(string message)
@@ -65,6 +63,9 @@ internal class FileLogger : ILogger
             await using var file = new StreamWriter(filePath, true);
             await file.WriteLineAsync(message);
             file.Close();
+        }catch(Exception e)
+        {
+            Logger.Error($"Error writing to file: {e.GetBaseException()}");
         }
         finally
         {

@@ -26,6 +26,12 @@ public class LogManager
         IsInitialized = true;
 
         ProcessQueue();
+        
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            config.IsFileLoggingEnabled = false;
+            Warn($"Logging to file is only supported on Windows - Logging to file will be disabled");
+        }
     }
 
     public static LogManager GetLogger()
