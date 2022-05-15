@@ -1,7 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using badLogg.Interfaces;
+using badLogg.Util;
 
-namespace badLogg;
+namespace badLogg.Core;
 
 //TODO: Make this disposable?
 public class LogManager
@@ -13,24 +15,37 @@ public class LogManager
     private LogConfig Config { get;  }
     private ILogger FileLogger { get; }
     private ILogger ConsoleLogger { get; }
+
+    private SafeLogger SafeLogger { get; }
     
     private readonly ManualResetEvent _hasNewLogs = new(false);
+    private readonly ManualResetEvent _hasNewSafeLogs = new(false);
     private readonly Queue<Action> _logQueue = new();
+    private readonly Queue<Action> _safeLogQueue = new();
 
     public LogManager(LogConfig config)
     {
-        _instance = this;
-        Config = config;
-        FileLogger = new FileLogger(Config);
-        ConsoleLogger = new ConsoleLogger(Config);
-        IsInitialized = true;
-
-        ProcessQueue();
-        
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        try
         {
-            config.IsFileLoggingEnabled = false;
-            Warn($"Logging to file is only supported on Windows - Logging to file will be disabled");
+            _instance = this;
+            Config = config;
+            SafeLogger = new SafeLogger();
+            FileLogger = new FileLogger(Config);
+            ConsoleLogger = new ConsoleLogger(Config);
+            IsInitialized = true;
+            ProcessSafeQueue();
+            ProcessQueue();
+
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                config.IsFileLoggingEnabled = false;
+                Warn($"Logging to file is only supported on Windows - Logging to file will be disabled");
+            }
+            
+        }
+        catch (Exception e)
+        {
+            SafeLog($"An error occurred while initializing the LogManager: {e.GetBaseException()}");
         }
     }
 
@@ -44,6 +59,14 @@ public class LogManager
         return _instance;
     }
     
+    public LogConfig GetConfig()
+    {
+        if (Config == null)
+        {
+            throw new Exception("LogConfig is not initialized");
+        }
+        return Config;
+    }
     
     public void Info(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
@@ -102,16 +125,35 @@ public class LogManager
         {
             AddToQueue(() => ConsoleLogger.Debug(message, callerName, callerPath));
         }
+        
 
     }
 
-    private void AddToQueue(Action action)
+    internal void SafeLog(string message, [CallerMemberName] string callerName = "", [CallerFilePath] string callerPath = "")
     {
-        lock (_logQueue)
+        async void Action() => await SafeLogger.Log($"{message}", callerName, callerPath);
+
+        AddToQueue( Action, true);
+    }
+
+    private void AddToQueue(Action action, bool isSafeLog=false)
+    {
+        if (isSafeLog)
         {
-            _logQueue.Enqueue(action);
+            lock (_safeLogQueue)
+            {
+                _safeLogQueue.Enqueue(action);
+            }
+            _hasNewSafeLogs.Set();
         }
-        _hasNewLogs.Set();
+        else
+        {
+            lock (_logQueue)
+            {
+                _logQueue.Enqueue(action);
+            }
+            _hasNewLogs.Set();
+        }
     }
 
     //TODO: flush logs from queue on demand
@@ -131,6 +173,30 @@ public class LogManager
                     _logQueue.Clear();
                 }
 
+                foreach (var log in queueCopy)
+                {
+                    log();
+                }
+            }
+        });
+    }
+
+    private void ProcessSafeQueue()
+    {
+        Task.Run(() =>
+        {
+            while (IsInitialized)
+            {
+                _hasNewSafeLogs.WaitOne();
+                _hasNewSafeLogs.Reset();
+                
+                Queue<Action> queueCopy;
+                lock (_safeLogQueue)
+                {
+                    queueCopy = new Queue<Action>(_safeLogQueue);
+                    _safeLogQueue.Clear();
+                }
+                
                 foreach (var log in queueCopy)
                 {
                     log();
@@ -160,7 +226,7 @@ public class LogManager
         }
         catch (Exception e)
         {
-            Error($"Failed to create console: {e.GetBaseException()}");
+            Error($"An error occurred while creating console: {e.GetBaseException()}");
         }
     }
     
@@ -180,7 +246,7 @@ public class LogManager
         }
         catch (Exception e)
         {
-            Error($"Failed to destroy console: {e.GetBaseException()}");
+            Error($"An error occurred while destroying console: {e.GetBaseException()}");
         }
     }
 }

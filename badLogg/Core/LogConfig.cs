@@ -1,4 +1,4 @@
-﻿namespace badLogg;
+﻿namespace badLogg.Core;
 
 public class LogConfig
 {
@@ -11,9 +11,9 @@ public class LogConfig
         IsConsoleLoggingEnabled = isConsoleLoggingEnabled;
     }
 
-    public string AppName { get; set; }
-    public string LogDirectory { get; set; }
-    public int MaxLogs { get; set; }
-    public bool IsFileLoggingEnabled { get; set; }
-    public bool IsConsoleLoggingEnabled { get; set; }
+    public string AppName { get; internal set; }
+    public string LogDirectory { get; internal set; }
+    public int MaxLogs { get; internal set; }
+    public bool IsFileLoggingEnabled { get; internal set; }
+    public bool IsConsoleLoggingEnabled { get; internal set; }
 }

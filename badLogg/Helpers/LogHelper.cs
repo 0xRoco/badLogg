@@ -1,4 +1,4 @@
-﻿namespace badLogg;
+﻿namespace badLogg.Helpers;
 
 internal static class LogHelper
 {

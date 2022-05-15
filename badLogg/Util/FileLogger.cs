@@ -1,4 +1,8 @@
-﻿namespace badLogg;
+﻿using badLogg.Core;
+using badLogg.Helpers;
+using badLogg.Interfaces;
+
+namespace badLogg.Util;
 
 internal class FileLogger : ILogger
 {
@@ -65,7 +69,7 @@ internal class FileLogger : ILogger
             file.Close();
         }catch(Exception e)
         {
-            Logger.Error($"Error writing to file: {e.GetBaseException()}");
+            Logger.SafeLog($"An error occured while writing to file: {e.GetBaseException()}");
         }
         finally
         {

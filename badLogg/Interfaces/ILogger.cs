@@ -1,5 +1,5 @@
 ﻿
-namespace badLogg;
+namespace badLogg.Interfaces;
 
 internal interface ILogger
 {
