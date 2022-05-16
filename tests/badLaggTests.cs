@@ -1,7 +1,6 @@
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using badLogg;
+using badLogg.Core;
 using NUnit.Framework;
 
 namespace tests;

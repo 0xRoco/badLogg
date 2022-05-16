@@ -1,4 +1,4 @@
-﻿namespace badLogg;
+﻿namespace badLogg.Util;
 
 internal enum LogLevel
 {

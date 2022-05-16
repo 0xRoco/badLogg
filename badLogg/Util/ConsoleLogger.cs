@@ -1,12 +1,18 @@
-﻿namespace badLogg;
+﻿using badLogg.Core;
+using badLogg.Helpers;
+using badLogg.Interfaces;
+
+namespace badLogg.Util;
 
 internal class ConsoleLogger : ILogger
 {
     private LogConfig Config { get;}
+    private LogManager Logger { get; }
 
     public ConsoleLogger(LogConfig config)
     {
         Config = config;
+        Logger = LogManager.GetLogger();
     }
 
     public async Task Info(string message, string callerName = "", string callerPath = "")
@@ -38,19 +44,27 @@ internal class ConsoleLogger : ILogger
         return $"{DateTime.Now:s}| {logLevel}| {LogHelper.GetClassName(callerPath)}.{callerName}: {message}";
     }
 
-    private static Task PrintToConsole(LogLevel logLevel ,string message)
+    private Task PrintToConsole(LogLevel logLevel ,string message)
     {
-        Console.ForegroundColor = logLevel switch
+        try
         {
-            LogLevel.Info => ConsoleColor.White,
-            LogLevel.Warn => ConsoleColor.Yellow,
-            LogLevel.Error => ConsoleColor.Red,
-            LogLevel.Debug => ConsoleColor.DarkGray,
-            _ => Console.ForegroundColor
-        };
-        Console.WriteLine($"{message}");
-        Console.ResetColor();
-        return Task.CompletedTask;
+            Console.ForegroundColor = logLevel switch
+            {
+                LogLevel.Info => ConsoleColor.White,
+                LogLevel.Warn => ConsoleColor.Yellow,
+                LogLevel.Error => ConsoleColor.Red,
+                LogLevel.Debug => ConsoleColor.DarkGray,
+                _ => Console.ForegroundColor
+            };
+            Console.WriteLine($"{message}");
+            Console.ResetColor();
+            return Task.CompletedTask;
+        }
+        catch (Exception e)
+        {
+            Logger.SafeLog($"An error occured while trying to print to console: {e.GetBaseException()}");
+            return Task.FromException(e);
+        }
     }
     
 }
