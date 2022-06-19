@@ -12,11 +12,11 @@ public class LogManager
     public bool IsConsoleCreated { get; private set; }
     
     private static LogManager? _instance;
-    private LogConfig Config { get;  }
-    private ILogger FileLogger { get; }
-    private ILogger ConsoleLogger { get; }
+    private LogConfig Config { get; } = null!;
+    private ILogger FileLogger { get; } = null!;
+    private ILogger ConsoleLogger { get; } = null!;
 
-    private SafeLogger SafeLogger { get; }
+    private SafeLogger SafeLogger { get; } = null!;
     
     private readonly ManualResetEvent _hasNewLogs = new(false);
     private readonly ManualResetEvent _hasNewSafeLogs = new(false);
@@ -33,8 +33,8 @@ public class LogManager
             FileLogger = new FileLogger(Config);
             ConsoleLogger = new ConsoleLogger(Config);
             IsInitialized = true;
-            ProcessSafeQueue();
-            ProcessQueue();
+            Task.Run(ProcessSafeQueue);
+            Task.Run(ProcessQueue);
 
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
@@ -159,50 +159,44 @@ public class LogManager
     //TODO: flush logs from queue on demand
     private void ProcessQueue()
     {
-        Task.Run(() =>
+        while (IsInitialized)
         {
-            while (IsInitialized)
+            _hasNewLogs.WaitOne();
+            _hasNewLogs.Reset();
+
+            Queue<Action> queueCopy;
+            lock (_logQueue)
             {
-                _hasNewLogs.WaitOne();
-                _hasNewLogs.Reset();
-
-                Queue<Action> queueCopy;
-                lock (_logQueue)
-                {
-                    queueCopy = new Queue<Action>(_logQueue);
-                    _logQueue.Clear();
-                }
-
-                foreach (var log in queueCopy)
-                {
-                    log();
-                }
+                queueCopy = new Queue<Action>(_logQueue);
+                _logQueue.Clear();
             }
-        });
+
+            foreach (var log in queueCopy)
+            {
+                log();
+            }
+        }
     }
 
     private void ProcessSafeQueue()
     {
-        Task.Run(() =>
+        while (IsInitialized)
         {
-            while (IsInitialized)
+            _hasNewSafeLogs.WaitOne();
+            _hasNewSafeLogs.Reset();
+                
+            Queue<Action> queueCopy;
+            lock (_safeLogQueue)
             {
-                _hasNewSafeLogs.WaitOne();
-                _hasNewSafeLogs.Reset();
-                
-                Queue<Action> queueCopy;
-                lock (_safeLogQueue)
-                {
-                    queueCopy = new Queue<Action>(_safeLogQueue);
-                    _safeLogQueue.Clear();
-                }
-                
-                foreach (var log in queueCopy)
-                {
-                    log();
-                }
+                queueCopy = new Queue<Action>(_safeLogQueue);
+                _safeLogQueue.Clear();
             }
-        });
+                
+            foreach (var log in queueCopy)
+            {
+                log();
+            }
+        }
     }
     
     [DllImport("kernel32.dll")]
@@ -217,12 +211,12 @@ public class LogManager
             if (!Config.IsConsoleLoggingEnabled || IsConsoleCreated ||
                 !RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                Warn($"Console was not created because {nameof(Config.IsConsoleLoggingEnabled)} is false or {nameof(IsConsoleCreated)} is true or OS is not Windows");
                 return;
             }
 
             AllocConsole();
             IsConsoleCreated = true;
-            Info("Console created");
         }
         catch (Exception e)
         {

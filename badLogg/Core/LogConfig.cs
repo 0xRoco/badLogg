@@ -2,18 +2,40 @@
 
 public class LogConfig
 {
-    public LogConfig(string appName, string logDirectory, int maxLogs, bool isFileLoggingEnabled, bool isConsoleLoggingEnabled)
-    {
-        AppName = appName;
-        LogDirectory = logDirectory;
-        MaxLogs = maxLogs;
-        IsFileLoggingEnabled = isFileLoggingEnabled;
-        IsConsoleLoggingEnabled = isConsoleLoggingEnabled;
-    }
 
-    public string AppName { get; internal set; }
-    public string LogDirectory { get; internal set; }
-    public int MaxLogs { get; internal set; }
+    public string AppName { get; private set; } = "badLogg";
+    public string LogDirectory { get; private set; } = "/Logs";
+    public int MaxLogs { get; private set; } = 3;
     public bool IsFileLoggingEnabled { get; internal set; }
     public bool IsConsoleLoggingEnabled { get; internal set; }
+    
+    public LogConfig SetAppName(string appName)
+    {
+        AppName = appName;
+        return this;
+    }
+    
+    public LogConfig SetLogDirectory(string logDirectory)
+    {
+        LogDirectory = logDirectory;
+        return this;
+    }
+    
+    public LogConfig SetMaxLogs(int maxLogs)
+    {
+        MaxLogs = maxLogs;
+        return this;
+    }
+    
+    public LogConfig WithFileLogging()
+    {
+        IsFileLoggingEnabled = true;
+        return this;
+    }
+    
+    public LogConfig WithConsoleLogging()
+    {
+        IsConsoleLoggingEnabled = true;
+        return this;
+    }
 }

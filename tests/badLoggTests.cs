@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using badLogg.Core;
 using NUnit.Framework;
@@ -7,17 +8,18 @@ namespace tests;
 
 // ReSharper disable once IdentifierTypo
 // ReSharper disable once InconsistentNaming
-public class badLaggTests
+public class badLoggTests
 {
     private readonly LogManager _logger;
 
-    public badLaggTests()
+    public badLoggTests()
     {
-        _logger = new LogManager(new LogConfig("badLogg",
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\badLogg\\UnitTest\\Logs",
-            5,
-            true,
-            true));
+        _logger = new LogManager(new LogConfig()
+            .SetAppName("badLogg")
+            .SetLogDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\badLogg\\UnitTest\\Logs")
+            .SetMaxLogs(5)
+            .WithConsoleLogging()
+            .WithFileLogging());
     }
 
     [Test]
@@ -25,6 +27,7 @@ public class badLaggTests
     public void CanCreateLogger()
     {
         Assert.IsNotNull(_logger);
+        _logger.Info("CanCreateLogger");
     }
 
     [Test]
@@ -33,6 +36,7 @@ public class badLaggTests
     {
         _logger.CreateConsole();
         Assert.IsTrue(_logger.IsConsoleCreated);
+        _logger.Info("CanCreateConsole");
     }
 
     [Test]
@@ -65,15 +69,10 @@ public class badLaggTests
     
     [Test]
     [Order(6)]
-    public void CanLogParallel()
+    public void LogDirectoryCreated()
     {
-        Parallel.For(0, 10, i =>
-        {
-            _logger.Info($"This is a info log {i}");
-            _logger.Warn($"This is a warning log {i}");
-            _logger.Error($"This is a error log {i}");
-            _logger.Debug($"This is a debug log {i}");
-        });
+        Assert.IsTrue(Directory.Exists(_logger.GetConfig().LogDirectory));
+        _logger.Info("LogDirectoryCreated");
     }
 
     [Test]
@@ -82,5 +81,6 @@ public class badLaggTests
     {
         _logger.DestroyConsole();
         Assert.IsFalse(_logger.IsConsoleCreated);
+        _logger.Info("CanDestroyConsole");
     }
 }
